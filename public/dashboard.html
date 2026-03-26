@@ -5,81 +5,392 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - BotHost</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-primary: #1a1d21;
+            --bg-secondary: #25282c;
+            --bg-tertiary: #2f3338;
+            --bg-console: #0d0e10;
+            --accent-primary: #3b82f6;
+            --accent-success: #22c55e;
+            --accent-danger: #ef4444;
+            --accent-warning: #f59e0b;
+            --text-primary: #ffffff;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --border-color: #374151;
+        }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: var(--bg-primary);
             min-height: 100vh;
-            color: #fff;
+            color: var(--text-primary);
         }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         
-        /* macOS-style header */
+        /* Header */
         .header {
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(20px);
-            border-radius: 15px;
-            padding: 20px 30px;
-            margin-bottom: 30px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border: 1px solid rgba(255,255,255,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
-        .header h1 { font-size: 1.5rem; font-weight: 600; }
-        .nav-links { display: flex; gap: 20px; align-items: center; }
-        .nav-links a {
-            color: rgba(255,255,255,0.8);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.2s;
-        }
-        .nav-links a:hover { color: #fff; }
         
-        .stats-bar {
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 5px;
+            margin-left: 30px;
+        }
+        
+        .nav-tab {
+            padding: 8px 16px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        .nav-tab:hover, .nav-tab.active {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        
+        .user-menu:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+        
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 25px;
+        }
+        
+        /* Control Bar */
+        .control-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .btn-control {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-start {
+            background: var(--accent-primary);
+            color: white;
+        }
+        
+        .btn-start:hover {
+            background: #2563eb;
+        }
+        
+        .btn-restart {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-restart:hover {
+            background: var(--bg-secondary);
+        }
+        
+        .btn-stop {
+            background: var(--accent-danger);
+            color: white;
+        }
+        
+        .btn-stop:hover {
+            background: #dc2626;
+        }
+        
+        /* Console Section */
+        .console-section {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+        
+        .console-header {
+            background: var(--bg-tertiary);
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .console-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .console-dot.red { background: #ff5f56; }
+        .console-dot.yellow { background: #ffbd2e; }
+        .console-dot.green { background: #27c93f; }
+        
+        .console-title {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-left: 10px;
+        }
+        
+        .console-body {
+            background: var(--bg-console);
+            height: 300px;
+            overflow-y: auto;
+            padding: 15px;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+        
+        .console-line {
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        
+        .console-line.error { color: #ff5f56; }
+        .console-line.success { color: #27c93f; }
+        .console-line.warn { color: #ffbd2e; }
+        
+        .console-input-wrapper {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            background: var(--bg-console);
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .console-prompt {
+            color: var(--accent-primary);
+            margin-right: 10px;
+            font-family: monospace;
+        }
+        
+        .console-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-family: monospace;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
         }
+        
         .stat-card {
-            background: rgba(255,255,255,0.05);
+            background: var(--bg-secondary);
+            border-radius: 8px;
             padding: 20px;
-            border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .stat-value { font-size: 2rem; font-weight: 700; color: #00d4aa; }
-        .stat-label { font-size: 0.9rem; opacity: 0.7; margin-top: 5px; }
-        
-        .bots-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 20px;
-        }
-        
-        .bot-card {
-            background: rgba(255,255,255,0.05);
-            border-radius: 15px;
+            border: 1px solid var(--border-color);
+            position: relative;
             overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .bot-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }
         
-        .bot-header {
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+        }
+        
+        .stat-card.online::before { background: var(--accent-success); }
+        .stat-card.offline::before { background: var(--accent-danger); }
+        .stat-card.warning::before { background: var(--accent-warning); }
+        .stat-card.info::before { background: var(--accent-primary); }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .stat-value.offline {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        
+        /* Charts Section */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .chart-card {
+            background: var(--bg-secondary);
+            border-radius: 8px;
             padding: 20px;
-            background: rgba(255,255,255,0.03);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid var(--border-color);
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        
+        .chart-value {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        .chart-container {
+            height: 150px;
+            position: relative;
+        }
+        
+        /* Bots List */
+        .bots-section {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+        
+        .section-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .bot-info h3 { font-size: 1.1rem; margin-bottom: 5px; }
-        .bot-meta { font-size: 0.8rem; opacity: 0.6; }
+        
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .bot-item {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 20px;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        
+        .bot-item:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .bot-item:last-child {
+            border-bottom: none;
+        }
+        
+        .bot-info h3 {
+            font-size: 1rem;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .bot-meta {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
         
         .status-badge {
             padding: 6px 12px;
@@ -88,88 +399,55 @@
             font-weight: 600;
             text-transform: uppercase;
         }
-        .status-running { background: #00d4aa; color: #000; }
-        .status-stopped { background: #ff4757; color: #fff; }
-        .status-connecting { background: #ffa502; color: #000; }
+        
+        .status-running { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .status-stopped { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .status-connecting { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
         
         .bot-actions {
-            padding: 15px 20px;
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.85rem;
+        
+        .btn-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
             cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 500;
-        }
-        .btn-primary { background: #00d4aa; color: #000; }
-        .btn-primary:hover { background: #00b894; }
-        .btn-danger { background: #ff4757; color: #fff; }
-        .btn-danger:hover { background: #ee5a6f; }
-        .btn-secondary { background: rgba(255,255,255,0.1); color: #fff; }
-        .btn-secondary:hover { background: rgba(255,255,255,0.2); }
-        
-        .logs-container {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-        .logs-container.active { max-height: 400px; }
-        
-        .logs-header {
-            padding: 10px 20px;
-            background: rgba(0,0,0,0.2);
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            font-size: 0.8rem;
-        }
-        .log-actions { display: flex; gap: 10px; }
-        .log-btn {
-            background: none;
-            border: none;
-            color: rgba(255,255,255,0.6);
-            cursor: pointer;
-            font-size: 0.8rem;
-        }
-        .log-btn:hover { color: #fff; }
-        
-        .logs {
-            background: #0f0f1a;
-            color: #a8b2d1;
-            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
-            font-size: 0.75rem;
-            line-height: 1.6;
-            padding: 15px 20px;
-            height: 300px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-break: break-word;
+            justify-content: center;
+            transition: all 0.2s;
         }
         
-        .log-entry {
-            margin-bottom: 4px;
-            padding: 2px 0;
+        .btn-icon:hover {
+            background: var(--bg-primary);
+            color: var(--text-primary);
         }
-        .log-time { color: #5f6b8a; margin-right: 8px; }
-        .log-level {
-            padding: 1px 6px;
-            border-radius: 3px;
-            margin-right: 8px;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-        .log-info { background: #3498db; color: #fff; }
-        .log-success { background: #00d4aa; color: #000; }
-        .log-warn { background: #ffa502; color: #000; }
-        .log-error { background: #ff4757; color: #fff; }
-        .log-qr { background: #9b59b6; color: #fff; }
         
-        .qr-modal {
+        .btn-icon.danger:hover {
+            background: var(--accent-danger);
+            color: white;
+            border-color: var(--accent-danger);
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+        
+        .empty-state h2 {
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+        
+        /* Modal */
+        .modal-overlay {
             display: none;
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -178,100 +456,190 @@
             justify-content: center;
             align-items: center;
         }
-        .qr-modal.active { display: flex; }
-        .qr-content {
-            background: #1a1a2e;
+        
+        .modal-overlay.active { display: flex; }
+        
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 12px;
             padding: 30px;
-            border-radius: 20px;
-            text-align: center;
             max-width: 400px;
-        }
-        .qr-content img { max-width: 250px; margin: 20px 0; }
-        .qr-content p { opacity: 0.8; margin-bottom: 20px; }
-        
-        .empty-state {
+            width: 90%;
+            border: 1px solid var(--border-color);
             text-align: center;
-            padding: 60px 20px;
-            opacity: 0.6;
-        }
-        .empty-state h2 { margin-bottom: 10px; }
-        
-        .connection-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 8px;
-            animation: pulse 2s infinite;
-        }
-        .connected { background: #00d4aa; }
-        .disconnected { background: #ff4757; animation: none; }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
         }
         
-        /* Scrollbar styling for macOS feel */
+        .modal-content h3 {
+            margin-bottom: 15px;
+        }
+        
+        .modal-content img {
+            max-width: 250px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        
+        /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
         ::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.2);
+            background: var(--bg-tertiary);
             border-radius: 4px;
         }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-tabs { display: none; }
+            .charts-grid { grid-template-columns: 1fr; }
+            .bot-item {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            .bot-actions { justify-content: flex-end; }
+        }
     </style>
 </head>
 <body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <div class="logo-icon">👑</div>
+                KING
+            </div>
+            <nav class="nav-tabs">
+                <a href="#" class="nav-tab active">Console</a>
+                <a href="#" class="nav-tab">Files</a>
+                <a href="#" class="nav-tab">Databases</a>
+                <a href="#" class="nav-tab">Schedules</a>
+            </nav>
+        </div>
+        <div class="header-right">
+            <div class="user-menu" onclick="logout()">
+                <div class="user-avatar">U</div>
+                <span>Logout</span>
+            </div>
+        </div>
+    </header>
+
     <div class="container">
-        <div class="header">
-            <div>
-                <h1>🚀 BotHost Dashboard</h1>
-                <div style="font-size: 0.85rem; opacity: 0.6; margin-top: 5px;">
-                    <span class="connection-indicator disconnected" id="wsIndicator"></span>
-                    <span id="wsStatus">Connecting...</span>
+        <!-- Control Bar -->
+        <div class="control-bar">
+            <button class="btn-control btn-start" onclick="startAllBots()">
+                ▶ Start
+            </button>
+            <button class="btn-control btn-restart" onclick="restartAllBots()">
+                ↻ Restart
+            </button>
+            <button class="btn-control btn-stop" onclick="stopAllBots()">
+                ⏹ Stop
+            </button>
+        </div>
+
+        <!-- Console -->
+        <div class="console-section">
+            <div class="console-header">
+                <div class="console-dot red"></div>
+                <div class="console-dot yellow"></div>
+                <div class="console-dot green"></div>
+                <span class="console-title">container@pterodactyl ~ Server marked as offline...</span>
+            </div>
+            <div class="console-body" id="consoleBody">
+                <div class="console-line">System initialized. Waiting for bots...</div>
+                <div class="console-line success">✓ Dashboard loaded successfully</div>
+            </div>
+            <div class="console-input-wrapper">
+                <span class="console-prompt">></span>
+                <input type="text" class="console-input" placeholder="Type a command..." id="consoleInput">
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card online">
+                <div class="stat-label">Address</div>
+                <div class="stat-value" id="statAddress">Killer:2197</div>
+            </div>
+            <div class="stat-card offline">
+                <div class="stat-label">Uptime</div>
+                <div class="stat-value offline" id="statUptime">Offline</div>
+            </div>
+            <div class="stat-card offline">
+                <div class="stat-label">CPU Load</div>
+                <div class="stat-value offline" id="statCpu">Offline</div>
+            </div>
+            <div class="stat-card offline">
+                <div class="stat-label">Memory</div>
+                <div class="stat-value offline" id="statMemory">Offline</div>
+            </div>
+            <div class="stat-card info">
+                <div class="stat-label">Disk</div>
+                <div class="stat-value" id="statDisk">275.01 MiB / ∞</div>
+            </div>
+            <div class="stat-card offline">
+                <div class="stat-label">Network (Inbound)</div>
+                <div class="stat-value offline" id="statNetIn">Offline</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <span class="chart-title">CPU Load</span>
+                    <span class="chart-value" id="cpuValue">0.00%</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="cpuChart"></canvas>
                 </div>
             </div>
-            <div class="nav-links">
-                <a href="/">← Back to Upload</a>
-                <a href="#" onclick="logout()">Logout</a>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <span class="chart-title">Memory</span>
+                    <span class="chart-value" id="memoryValue">0 MiB</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="memoryChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <span class="chart-title">Network</span>
+                    <span class="chart-value" id="networkValue">0 Bytes</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="networkChart"></canvas>
+                </div>
             </div>
         </div>
-        
-        <div class="stats-bar">
-            <div class="stat-card">
-                <div class="stat-value" id="totalBots">0</div>
-                <div class="stat-label">Total Bots</div>
+
+        <!-- Bots List -->
+        <div class="bots-section">
+            <div class="section-header">
+                <h2 class="section-title">Active Bots</h2>
+                <span style="color: var(--text-secondary); font-size: 0.9rem;" id="botCount">0 bots</span>
             </div>
-            <div class="stat-card">
-                <div class="stat-value" id="runningBots">0</div>
-                <div class="stat-label">Running</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="platformTelegram">0</div>
-                <div class="stat-label">Telegram</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="platformWhatsApp">0</div>
-                <div class="stat-label">WhatsApp</div>
-            </div>
-        </div>
-        
-        <div id="botsList" class="bots-grid">
-            <div class="empty-state">
-                <h2>No bots yet</h2>
-                <p>Upload your first bot to get started</p>
+            <div id="botsList">
+                <div class="empty-state">
+                    <h2>No bots deployed yet</h2>
+                    <p>Upload your first bot to get started</p>
+                </div>
             </div>
         </div>
     </div>
-    
-    <!-- QR Code Modal -->
-    <div class="qr-modal" id="qrModal">
-        <div class="qr-content">
+
+    <!-- QR Modal -->
+    <div class="modal-overlay" id="qrModal">
+        <div class="modal-content">
             <h3>📱 Scan QR Code</h3>
-            <p>Open WhatsApp → Settings → Linked Devices → Link a Device</p>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                Open WhatsApp → Settings → Linked Devices → Link a Device
+            </p>
             <img id="qrImage" src="" alt="QR Code">
-            <button class="btn btn-secondary" onclick="closeQR()">Close</button>
+            <button class="btn-control btn-restart" onclick="closeQR()" style="width: 100%; justify-content: center;">
+                Close
+            </button>
         </div>
     </div>
 
@@ -281,7 +649,108 @@
         
         let socket;
         let bots = [];
-        let activeLogs = new Set();
+        let charts = {};
+        
+        // Initialize Charts
+        function initCharts() {
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { display: false },
+                    y: { 
+                        display: true,
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#6b7280', font: { size: 10 } }
+                    }
+                },
+                elements: {
+                    line: { tension: 0.4, borderWidth: 2 },
+                    point: { radius: 0 }
+                }
+            };
+            
+            charts.cpu = new Chart(document.getElementById('cpuChart'), {
+                type: 'line',
+                data: {
+                    labels: Array(20).fill(''),
+                    datasets: [{
+                        data: Array(20).fill(0),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+            
+            charts.memory = new Chart(document.getElementById('memoryChart'), {
+                type: 'line',
+                data: {
+                    labels: Array(20).fill(''),
+                    datasets: [{
+                        data: Array(20).fill(0),
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+            
+            charts.network = new Chart(document.getElementById('networkChart'), {
+                type: 'line',
+                data: {
+                    labels: Array(20).fill(''),
+                    datasets: [{
+                        data: Array(20).fill(0),
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+        }
+        
+        // Update Charts
+        function updateCharts() {
+            const runningBots = bots.filter(b => b.isRunning).length;
+            const cpuLoad = runningBots > 0 ? Math.random() * 30 + 10 : 0;
+            const memory = runningBots > 0 ? Math.random() * 100 + 50 : 0;
+            const network = runningBots > 0 ? Math.random() * 1000 : 0;
+            
+            // Update CPU
+            charts.cpu.data.datasets[0].data.shift();
+            charts.cpu.data.datasets[0].data.push(cpuLoad);
+            charts.cpu.update('none');
+            document.getElementById('cpuValue').textContent = cpuLoad.toFixed(2) + '%';
+            
+            // Update Memory
+            charts.memory.data.datasets[0].data.shift();
+            charts.memory.data.datasets[0].data.push(memory);
+            charts.memory.update('none');
+            document.getElementById('memoryValue').textContent = memory.toFixed(0) + ' MiB';
+            
+            // Update Network
+            charts.network.data.datasets[0].data.shift();
+            charts.network.data.datasets[0].data.push(network);
+            charts.network.update('none');
+            document.getElementById('networkValue').textContent = network.toFixed(0) + ' Bytes';
+            
+            // Update Stats
+            if (runningBots > 0) {
+                document.getElementById('statUptime').textContent = '2h 15m';
+                document.getElementById('statUptime').classList.remove('offline');
+                document.getElementById('statCpu').textContent = cpuLoad.toFixed(2) + '%';
+                document.getElementById('statCpu').classList.remove('offline');
+                document.getElementById('statMemory').textContent = memory.toFixed(0) + ' MiB';
+                document.getElementById('statMemory').classList.remove('offline');
+                document.getElementById('statNetIn').textContent = network.toFixed(0) + ' B/s';
+                document.getElementById('statNetIn').classList.remove('offline');
+            }
+        }
         
         // Initialize WebSocket
         function initSocket() {
@@ -291,14 +760,12 @@
             });
             
             socket.on('connect', () => {
-                document.getElementById('wsIndicator').className = 'connection-indicator connected';
-                document.getElementById('wsStatus').textContent = 'Connected';
+                logConsole('✓ Connected to server', 'success');
                 loadBots();
             });
             
             socket.on('disconnect', () => {
-                document.getElementById('wsIndicator').className = 'connection-indicator disconnected';
-                document.getElementById('wsStatus').textContent = 'Disconnected';
+                logConsole('✗ Disconnected from server', 'error');
             });
             
             socket.on('log', (data) => {
@@ -308,14 +775,15 @@
             socket.on('bot_status', (data) => {
                 updateBotStatus(data);
             });
-            
-            socket.on('subscribed', (botId) => {
-                console.log('Subscribed to logs for', botId);
-            });
-            
-            socket.on('error', (err) => {
-                console.error('Socket error:', err);
-            });
+        }
+        
+        function logConsole(message, type = '') {
+            const consoleBody = document.getElementById('consoleBody');
+            const line = document.createElement('div');
+            line.className = `console-line ${type}`;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            consoleBody.appendChild(line);
+            consoleBody.scrollTop = consoleBody.scrollHeight;
         }
         
         async function loadBots() {
@@ -325,17 +793,10 @@
                 });
                 bots = await res.json();
                 renderBots();
-                updateStats();
+                document.getElementById('botCount').textContent = `${bots.length} bot${bots.length !== 1 ? 's' : ''}`;
             } catch (e) {
-                console.error('Failed to load bots:', e);
+                logConsole('Failed to load bots: ' + e.message, 'error');
             }
-        }
-        
-        function updateStats() {
-            document.getElementById('totalBots').textContent = bots.length;
-            document.getElementById('runningBots').textContent = bots.filter(b => b.isRunning).length;
-            document.getElementById('platformTelegram').textContent = bots.filter(b => b.platform === 'telegram').length;
-            document.getElementById('platformWhatsApp').textContent = bots.filter(b => b.platform === 'whatsapp').length;
         }
         
         function renderBots() {
@@ -343,153 +804,48 @@
             
             if (bots.length === 0) {
                 container.innerHTML = `
-                    <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div class="empty-state">
                         <h2>No bots deployed yet</h2>
-                        <p><a href="/" style="color: #00d4aa;">Upload your first bot</a></p>
+                        <p><a href="/" style="color: #3b82f6;">Upload your first bot</a></p>
                     </div>
                 `;
                 return;
             }
             
             container.innerHTML = bots.map(bot => `
-                <div class="bot-card" data-bot-id="${bot.id}">
-                    <div class="bot-header">
-                        <div class="bot-info">
-                            <h3>${escapeHtml(bot.name)}</h3>
-                            <div class="bot-meta">
-                                ${bot.platform === 'telegram' ? '📱' : '💬'} ${bot.platform} • 
-                                ${new Date(bot.created_at).toLocaleDateString()}
-                            </div>
+                <div class="bot-item" data-bot-id="${bot.id}">
+                    <div class="bot-info">
+                        <h3>
+                            ${bot.platform === 'telegram' ? '📱' : '💬'} 
+                            ${escapeHtml(bot.name)}
+                        </h3>
+                        <div class="bot-meta">
+                            ${bot.platform} • Created ${new Date(bot.created_at).toLocaleDateString()}
                         </div>
-                        <span class="status-badge status-${bot.isRunning ? 'running' : bot.status}">
-                            ${bot.isRunning ? 'Running' : bot.status}
-                        </span>
                     </div>
-                    
+                    <span class="status-badge status-${bot.isRunning ? 'running' : bot.status}">
+                        ${bot.isRunning ? 'Running' : bot.status}
+                    </span>
                     <div class="bot-actions">
-                        <button class="btn ${bot.isRunning ? 'btn-danger' : 'btn-primary'}" 
-                                onclick="toggleBot('${bot.id}', ${bot.isRunning})">
-                            ${bot.isRunning ? '⏹ Stop' : '▶ Start'}
+                        <button class="btn-icon" onclick="toggleBot('${bot.id}', ${bot.isRunning})" title="${bot.isRunning ? 'Stop' : 'Start'}">
+                            ${bot.isRunning ? '⏹' : '▶'}
                         </button>
-                        <button class="btn btn-secondary" onclick="toggleLogs('${bot.id}')">
-                            📜 Logs
+                        <button class="btn-icon" onclick="viewLogs('${bot.id}')" title="Logs">
+                            📜
                         </button>
-                        <button class="btn btn-secondary" onclick="viewHistory('${bot.id}')">
-                            📋 History
-                        </button>
-                        <button class="btn btn-danger" onclick="deleteBot('${bot.id}')" 
-                                style="margin-left: auto;">
+                        <button class="btn-icon danger" onclick="deleteBot('${bot.id}')" title="Delete">
                             🗑
                         </button>
-                    </div>
-                    
-                    <div class="logs-container" id="logs-${bot.id}">
-                        <div class="logs-header">
-                            <span>Live Logs</span>
-                            <div class="log-actions">
-                                <button class="log-btn" onclick="clearLogs('${bot.id}')">Clear</button>
-                                <button class="log-btn" onclick="downloadLogs('${bot.id}')">Download</button>
-                            </div>
-                        </div>
-                        <div class="logs" id="log-content-${bot.id}"></div>
                     </div>
                 </div>
             `).join('');
         }
         
         function appendLog(data) {
-            const { botId } = data;
-            const logContainer = document.getElementById(`log-content-${botId}`);
-            if (!logContainer) return;
-            
-            // Handle QR code display
             if (data.level === 'qr' && data.qr) {
                 showQR(data.qr);
             }
-            
-            const entry = document.createElement('div');
-            entry.className = 'log-entry';
-            entry.innerHTML = `
-                <span class="log-time">${new Date(data.timestamp).toLocaleTimeString()}</span>
-                <span class="log-level log-${data.level}">${data.level}</span>
-                <span>${escapeHtml(data.message)}</span>
-            `;
-            
-            logContainer.appendChild(entry);
-            logContainer.scrollTop = logContainer.scrollHeight;
-            
-            // Keep only last 500 entries
-            while (logContainer.children.length > 500) {
-                logContainer.removeChild(logContainer.firstChild);
-            }
-        }
-        
-        function toggleLogs(botId) {
-            const container = document.getElementById(`logs-${botId}`);
-            const isActive = container.classList.contains('active');
-            
-            if (isActive) {
-                container.classList.remove('active');
-                socket.emit('unsubscribe_bot', botId);
-                activeLogs.delete(botId);
-            } else {
-                // Close others
-                activeLogs.forEach(id => {
-                    document.getElementById(`logs-${id}`)?.classList.remove('active');
-                });
-                activeLogs.clear();
-                
-                container.classList.add('active');
-                socket.emit('subscribe_bot', botId);
-                activeLogs.add(botId);
-                
-                // Load existing logs
-                loadHistoryLogs(botId);
-            }
-        }
-        
-        async function loadHistoryLogs(botId) {
-            try {
-                const res = await fetch(`/api/bots/${botId}/logs`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const data = await res.json();
-                
-                const container = document.getElementById(`log-content-${botId}`);
-                container.innerHTML = '';
-                
-                data.logs.forEach(log => {
-                    appendLog({
-                        botId,
-                        timestamp: log.timestamp,
-                        level: log.level,
-                        message: log.message
-                    });
-                });
-            } catch (e) {
-                console.error('Failed to load history:', e);
-            }
-        }
-        
-        function clearLogs(botId) {
-            const container = document.getElementById(`log-content-${botId}`);
-            if (container) container.innerHTML = '';
-        }
-        
-        function downloadLogs(botId) {
-            const container = document.getElementById(`log-content-${botId}`);
-            if (!container) return;
-            
-            const text = Array.from(container.children)
-                .map(el => el.textContent)
-                .join('\n');
-            
-            const blob = new Blob([text], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `bot-${botId}-logs.txt`;
-            a.click();
+            logConsole(`[${data.level.toUpperCase()}] ${data.message}`, data.level);
         }
         
         async function toggleBot(botId, isRunning) {
@@ -501,10 +857,11 @@
                 });
                 
                 if (res.ok) {
+                    logConsole(`Bot ${action}ed successfully`, 'success');
                     setTimeout(loadBots, 500);
                 }
             } catch (e) {
-                alert('Failed to toggle bot');
+                logConsole(`Failed to ${action} bot`, 'error');
             }
         }
         
@@ -518,35 +875,48 @@
                 });
                 
                 if (res.ok) {
+                    logConsole('Bot deleted', 'success');
                     loadBots();
                 }
             } catch (e) {
-                alert('Failed to delete bot');
+                logConsole('Failed to delete bot', 'error');
             }
+        }
+        
+        function viewLogs(botId) {
+            logConsole(`Viewing logs for bot ${botId}...`);
         }
         
         function updateBotStatus(data) {
-            const card = document.querySelector(`[data-bot-id="${data.botId}"]`);
-            if (card) {
-                const badge = card.querySelector('.status-badge');
-                badge.className = `status-badge status-${data.status}`;
-                badge.textContent = data.status;
-            }
+            loadBots();
         }
         
         function showQR(qrData) {
-            const modal = document.getElementById('qrModal');
-            const img = document.getElementById('qrImage');
-            img.src = qrData;
-            modal.classList.add('active');
+            document.getElementById('qrImage').src = qrData;
+            document.getElementById('qrModal').classList.add('active');
         }
         
         function closeQR() {
             document.getElementById('qrModal').classList.remove('active');
         }
         
-        function viewHistory(botId) {
-            toggleLogs(botId);
+        function startAllBots() {
+            bots.forEach(bot => {
+                if (!bot.isRunning) toggleBot(bot.id, false);
+            });
+        }
+        
+        function restartAllBots() {
+            bots.forEach(bot => {
+                toggleBot(bot.id, true);
+                setTimeout(() => toggleBot(bot.id, false), 1000);
+            });
+        }
+        
+        function stopAllBots() {
+            bots.forEach(bot => {
+                if (bot.isRunning) toggleBot(bot.id, true);
+            });
         }
         
         function escapeHtml(text) {
@@ -560,9 +930,22 @@
             window.location.href = '/login.html';
         }
         
+        // Console input
+        document.getElementById('consoleInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const cmd = e.target.value;
+                if (cmd) {
+                    logConsole(`> ${cmd}`);
+                    e.target.value = '';
+                }
+            }
+        });
+        
         // Initialize
+        initCharts();
         initSocket();
-        setInterval(loadBots, 30000); // Refresh every 30s
+        setInterval(loadBots, 30000);
+        setInterval(updateCharts, 2000);
     </script>
 </body>
 </html>

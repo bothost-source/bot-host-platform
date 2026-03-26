@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: bothost-platform
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+    disk:
+      name: bot-storage
+      mountPath: /opt/render/project/src/uploads
+      sizeGB: 1
+    healthCheckPath: /

@@ -1,7 +1,7 @@
 {
   "name": "bothost-platform",
-  "version": "2.0.0",
-  "description": "Multi-user bot hosting platform with WebSocket support",
+  "version": "2.1.0",
+  "description": "Multi-user bot hosting platform with ZIP support",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
@@ -20,7 +20,9 @@
     "@whiskeysockets/baileys": "^6.6.0",
     "qrcode": "^1.5.3",
     "pino": "^8.17.0",
-    "axios": "^1.6.2"
+    "axios": "^1.6.2",
+    "unzipper": "^0.10.14",
+    "archiver": "^6.0.1"
   },
   "engines": {
     "node": ">=18.0.0"

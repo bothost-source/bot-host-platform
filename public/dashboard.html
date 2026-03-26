@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - BotHost</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        
+        /* macOS-style header */
+        .header {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 15px;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .header h1 { font-size: 1.5rem; font-weight: 600; }
+        .nav-links { display: flex; gap: 20px; align-items: center; }
+        .nav-links a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: #fff; }
+        
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .stat-value { font-size: 2rem; font-weight: 700; color: #00d4aa; }
+        .stat-label { font-size: 0.9rem; opacity: 0.7; margin-top: 5px; }
+        
+        .bots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        
+        .bot-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .bot-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        .bot-header {
+            padding: 20px;
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .bot-info h3 { font-size: 1.1rem; margin-bottom: 5px; }
+        .bot-meta { font-size: 0.8rem; opacity: 0.6; }
+        
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-running { background: #00d4aa; color: #000; }
+        .status-stopped { background: #ff4757; color: #fff; }
+        .status-connecting { background: #ffa502; color: #000; }
+        
+        .bot-actions {
+            padding: 15px 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .btn-primary { background: #00d4aa; color: #000; }
+        .btn-primary:hover { background: #00b894; }
+        .btn-danger { background: #ff4757; color: #fff; }
+        .btn-danger:hover { background: #ee5a6f; }
+        .btn-secondary { background: rgba(255,255,255,0.1); color: #fff; }
+        .btn-secondary:hover { background: rgba(255,255,255,0.2); }
+        
+        .logs-container {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .logs-container.active { max-height: 400px; }
+        
+        .logs-header {
+            padding: 10px 20px;
+            background: rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+        }
+        .log-actions { display: flex; gap: 10px; }
+        .log-btn {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .log-btn:hover { color: #fff; }
+        
+        .logs {
+            background: #0f0f1a;
+            color: #a8b2d1;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 0.75rem;
+            line-height: 1.6;
+            padding: 15px 20px;
+            height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .log-entry {
+            margin-bottom: 4px;
+            padding: 2px 0;
+        }
+        .log-time { color: #5f6b8a; margin-right: 8px; }
+        .log-level {
+            padding: 1px 6px;
+            border-radius: 3px;
+            margin-right: 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .log-info { background: #3498db; color: #fff; }
+        .log-success { background: #00d4aa; color: #000; }
+        .log-warn { background: #ffa502; color: #000; }
+        .log-error { background: #ff4757; color: #fff; }
+        .log-qr { background: #9b59b6; color: #fff; }
+        
+        .qr-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .qr-modal.active { display: flex; }
+        .qr-content {
+            background: #1a1a2e;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+        }
+        .qr-content img { max-width: 250px; margin: 20px 0; }
+        .qr-content p { opacity: 0.8; margin-bottom: 20px; }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            opacity: 0.6;
+        }
+        .empty-state h2 { margin-bottom: 10px; }
+        
+        .connection-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        .connected { background: #00d4aa; }
+        .disconnected { background: #ff4757; animation: none; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Scrollbar styling for macOS feel */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>🚀 BotHost Dashboard</h1>
+                <div style="font-size: 0.85rem; opacity: 0.6; margin-top: 5px;">
+                    <span class="connection-indicator disconnected" id="wsIndicator"></span>
+                    <span id="wsStatus">Connecting...</span>
+                </div>
+            </div>
+            <div class="nav-links">
+                <a href="/">← Back to Upload</a>
+                <a href="#" onclick="logout()">Logout</a>
+            </div>
+        </div>
+        
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="stat-value" id="totalBots">0</div>
+                <div class="stat-label">Total Bots</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="runningBots">0</div>
+                <div class="stat-label">Running</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="platformTelegram">0</div>
+                <div class="stat-label">Telegram</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="platformWhatsApp">0</div>
+                <div class="stat-label">WhatsApp</div>
+            </div>
+        </div>
+        
+        <div id="botsList" class="bots-grid">
+            <div class="empty-state">
+                <h2>No bots yet</h2>
+                <p>Upload your first bot to get started</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- QR Code Modal -->
+    <div class="qr-modal" id="qrModal">
+        <div class="qr-content">
+            <h3>📱 Scan QR Code</h3>
+            <p>Open WhatsApp → Settings → Linked Devices → Link a Device</p>
+            <img id="qrImage" src="" alt="QR Code">
+            <button class="btn btn-secondary" onclick="closeQR()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login.html';
+        
+        let socket;
+        let bots = [];
+        let activeLogs = new Set();
+        
+        // Initialize WebSocket
+        function initSocket() {
+            socket = io({
+                auth: { token },
+                transports: ['websocket', 'polling']
+            });
+            
+            socket.on('connect', () => {
+                document.getElementById('wsIndicator').className = 'connection-indicator connected';
+                document.getElementById('wsStatus').textContent = 'Connected';
+                loadBots();
+            });
+            
+            socket.on('disconnect', () => {
+                document.getElementById('wsIndicator').className = 'connection-indicator disconnected';
+                document.getElementById('wsStatus').textContent = 'Disconnected';
+            });
+            
+            socket.on('log', (data) => {
+                appendLog(data);
+            });
+            
+            socket.on('bot_status', (data) => {
+                updateBotStatus(data);
+            });
+            
+            socket.on('subscribed', (botId) => {
+                console.log('Subscribed to logs for', botId);
+            });
+            
+            socket.on('error', (err) => {
+                console.error('Socket error:', err);
+            });
+        }
+        
+        async function loadBots() {
+            try {
+                const res = await fetch('/api/bots', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                bots = await res.json();
+                renderBots();
+                updateStats();
+            } catch (e) {
+                console.error('Failed to load bots:', e);
+            }
+        }
+        
+        function updateStats() {
+            document.getElementById('totalBots').textContent = bots.length;
+            document.getElementById('runningBots').textContent = bots.filter(b => b.isRunning).length;
+            document.getElementById('platformTelegram').textContent = bots.filter(b => b.platform === 'telegram').length;
+            document.getElementById('platformWhatsApp').textContent = bots.filter(b => b.platform === 'whatsapp').length;
+        }
+        
+        function renderBots() {
+            const container = document.getElementById('botsList');
+            
+            if (bots.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <h2>No bots deployed yet</h2>
+                        <p><a href="/" style="color: #00d4aa;">Upload your first bot</a></p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = bots.map(bot => `
+                <div class="bot-card" data-bot-id="${bot.id}">
+                    <div class="bot-header">
+                        <div class="bot-info">
+                            <h3>${escapeHtml(bot.name)}</h3>
+                            <div class="bot-meta">
+                                ${bot.platform === 'telegram' ? '📱' : '💬'} ${bot.platform} • 
+                                ${new Date(bot.created_at).toLocaleDateString()}
+                            </div>
+                        </div>
+                        <span class="status-badge status-${bot.isRunning ? 'running' : bot.status}">
+                            ${bot.isRunning ? 'Running' : bot.status}
+                        </span>
+                    </div>
+                    
+                    <div class="bot-actions">
+                        <button class="btn ${bot.isRunning ? 'btn-danger' : 'btn-primary'}" 
+                                onclick="toggleBot('${bot.id}', ${bot.isRunning})">
+                            ${bot.isRunning ? '⏹ Stop' : '▶ Start'}
+                        </button>
+                        <button class="btn btn-secondary" onclick="toggleLogs('${bot.id}')">
+                            📜 Logs
+                        </button>
+                        <button class="btn btn-secondary" onclick="viewHistory('${bot.id}')">
+                            📋 History
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteBot('${bot.id}')" 
+                                style="margin-left: auto;">
+                            🗑
+                        </button>
+                    </div>
+                    
+                    <div class="logs-container" id="logs-${bot.id}">
+                        <div class="logs-header">
+                            <span>Live Logs</span>
+                            <div class="log-actions">
+                                <button class="log-btn" onclick="clearLogs('${bot.id}')">Clear</button>
+                                <button class="log-btn" onclick="downloadLogs('${bot.id}')">Download</button>
+                            </div>
+                        </div>
+                        <div class="logs" id="log-content-${bot.id}"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function appendLog(data) {
+            const { botId } = data;
+            const logContainer = document.getElementById(`log-content-${botId}`);
+            if (!logContainer) return;
+            
+            // Handle QR code display
+            if (data.level === 'qr' && data.qr) {
+                showQR(data.qr);
+            }
+            
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `
+                <span class="log-time">${new Date(data.timestamp).toLocaleTimeString()}</span>
+                <span class="log-level log-${data.level}">${data.level}</span>
+                <span>${escapeHtml(data.message)}</span>
+            `;
+            
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // Keep only last 500 entries
+            while (logContainer.children.length > 500) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+        
+        function toggleLogs(botId) {
+            const container = document.getElementById(`logs-${botId}`);
+            const isActive = container.classList.contains('active');
+            
+            if (isActive) {
+                container.classList.remove('active');
+                socket.emit('unsubscribe_bot', botId);
+                activeLogs.delete(botId);
+            } else {
+                // Close others
+                activeLogs.forEach(id => {
+                    document.getElementById(`logs-${id}`)?.classList.remove('active');
+                });
+                activeLogs.clear();
+                
+                container.classList.add('active');
+                socket.emit('subscribe_bot', botId);
+                activeLogs.add(botId);
+                
+                // Load existing logs
+                loadHistoryLogs(botId);
+            }
+        }
+        
+        async function loadHistoryLogs(botId) {
+            try {
+                const res = await fetch(`/api/bots/${botId}/logs`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                const container = document.getElementById(`log-content-${botId}`);
+                container.innerHTML = '';
+                
+                data.logs.forEach(log => {
+                    appendLog({
+                        botId,
+                        timestamp: log.timestamp,
+                        level: log.level,
+                        message: log.message
+                    });
+                });
+            } catch (e) {
+                console.error('Failed to load history:', e);
+            }
+        }
+        
+        function clearLogs(botId) {
+            const container = document.getElementById(`log-content-${botId}`);
+            if (container) container.innerHTML = '';
+        }
+        
+        function downloadLogs(botId) {
+            const container = document.getElementById(`log-content-${botId}`);
+            if (!container) return;
+            
+            const text = Array.from(container.children)
+                .map(el => el.textContent)
+                .join('\n');
+            
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bot-${botId}-logs.txt`;
+            a.click();
+        }
+        
+        async function toggleBot(botId, isRunning) {
+            const action = isRunning ? 'stop' : 'start';
+            try {
+                const res = await fetch(`/api/bots/${botId}/${action}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (res.ok) {
+                    setTimeout(loadBots, 500);
+                }
+            } catch (e) {
+                alert('Failed to toggle bot');
+            }
+        }
+        
+        async function deleteBot(botId) {
+            if (!confirm('Are you sure? This cannot be undone.')) return;
+            
+            try {
+                const res = await fetch(`/api/bots/${botId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (res.ok) {
+                    loadBots();
+                }
+            } catch (e) {
+                alert('Failed to delete bot');
+            }
+        }
+        
+        function updateBotStatus(data) {
+            const card = document.querySelector(`[data-bot-id="${data.botId}"]`);
+            if (card) {
+                const badge = card.querySelector('.status-badge');
+                badge.className = `status-badge status-${data.status}`;
+                badge.textContent = data.status;
+            }
+        }
+        
+        function showQR(qrData) {
+            const modal = document.getElementById('qrModal');
+            const img = document.getElementById('qrImage');
+            img.src = qrData;
+            modal.classList.add('active');
+        }
+        
+        function closeQR() {
+            document.getElementById('qrModal').classList.remove('active');
+        }
+        
+        function viewHistory(botId) {
+            toggleLogs(botId);
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login.html';
+        }
+        
+        // Initialize
+        initSocket();
+        setInterval(loadBots, 30000); // Refresh every 30s
+    </script>
+</body>
+</html>

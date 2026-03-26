@@ -7,7 +7,7 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             color: white;
@@ -81,7 +81,7 @@
         }
         button {
             background: #00d4aa;
-            color: white;
+            color: #000;
             border: none;
             padding: 15px 40px;
             border-radius: 30px;
@@ -89,11 +89,10 @@
             font-weight: bold;
             cursor: pointer;
             width: 100%;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.2s;
         }
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
         }
         button:disabled {
             background: #666;
@@ -106,7 +105,7 @@
             border-radius: 10px;
             display: none;
         }
-        .status.success { background: #00d4aa; display: block; }
+        .status.success { background: #00d4aa; color: #000; display: block; }
         .status.error { background: #ff4757; display: block; }
         .features {
             display: grid;
@@ -124,13 +123,21 @@
             font-size: 2rem;
             margin-bottom: 10px;
         }
-        .dashboard-link {
+        .zip-notice {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .nav-links {
             text-align: center;
             margin-top: 20px;
         }
-        .dashboard-link a {
+        .nav-links a {
             color: #00d4aa;
             text-decoration: none;
+            margin: 0 15px;
             font-weight: bold;
         }
     </style>
@@ -143,6 +150,10 @@
         </header>
 
         <div class="card">
+            <div class="zip-notice">
+                ✅ <strong>NEW:</strong> ZIP files supported! Upload your entire bot folder as ZIP
+            </div>
+            
             <h2 style="margin-bottom: 20px;">Deploy Your Bot</h2>
             
             <form id="uploadForm">
@@ -161,18 +172,18 @@
 
                 <div class="form-group">
                     <label id="tokenLabel">Bot Token (from @BotFather)</label>
-                    <input type="password" name="token" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" required>
+                    <input type="password" name="token" placeholder="123456789:ABCdef..." required>
                 </div>
 
                 <div class="form-group">
-                    <label>Bot Files</label>
+                    <label>Bot Files (ZIP or individual files)</label>
                     <div class="file-drop" id="dropZone">
-                        <p>📁 Drag & drop your bot files here</p>
+                        <p>📁 Drag & drop files here</p>
                         <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 10px;">
-                            Accepts: .js, .json, .env, .py (Max 10MB)
+                            Accepts: .js, .json, .env, .py, .zip (Max 50MB)
                         </p>
                         <input type="file" id="fileInput" multiple style="display: none;" 
-                               accept=".js,.json,.env,.py">
+                               accept=".js,.json,.env,.py,.zip">
                     </div>
                     <div class="file-list" id="fileList"></div>
                 </div>
@@ -183,30 +194,31 @@
             <div id="status" class="status"></div>
         </div>
 
-        <div class="dashboard-link">
-            <a href="/dashboard.html">📊 View Dashboard →</a>
+        <div class="nav-links">
+            <a href="/dashboard.html">📊 Dashboard</a>
+            <a href="/login.html">🔐 Login / Register</a>
         </div>
 
         <div class="features">
             <div class="feature">
                 <div class="feature-icon">⚡</div>
                 <h3>Instant Deploy</h3>
-                <p>Your bot live in seconds</p>
+                <p>Auto-starts after upload</p>
             </div>
             <div class="feature">
-                <div class="feature-icon">🔄</div>
-                <h3>Auto Restart</h3>
-                <p>Crashes handled automatically</p>
+                <div class="feature-icon">🗜️</div>
+                <h3>ZIP Support</h3>
+                <p>Upload entire folders</p>
             </div>
             <div class="feature">
                 <div class="feature-icon">📜</div>
                 <h3>Live Logs</h3>
-                <p>Real-time output streaming</p>
+                <p>Real-time monitoring</p>
             </div>
             <div class="feature">
                 <div class="feature-icon">🆓</div>
                 <h3>Forever Free</h3>
-                <p>No credit card required</p>
+                <p>No credit card needed</p>
             </div>
         </div>
     </div>
@@ -220,16 +232,12 @@
         const tokenLabel = document.getElementById('tokenLabel');
         let files = [];
 
-        // Platform change handler
         platform.addEventListener('change', () => {
-            if (platform.value === 'whatsapp') {
-                tokenLabel.textContent = 'Session ID (optional for QR scan)';
-            } else {
-                tokenLabel.textContent = 'Bot Token (from @BotFather)';
-            }
+            tokenLabel.textContent = platform.value === 'whatsapp' 
+                ? 'Session Name (optional)' 
+                : 'Bot Token (from @BotFather)';
         });
 
-        // Drag & drop
         dropZone.addEventListener('click', () => fileInput.click());
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
@@ -251,7 +259,7 @@
         function updateFileList() {
             fileList.innerHTML = files.map((f, i) => `
                 <div class="file-item">
-                    <span>📄 ${f.name}</span>
+                    <span>${f.name} (${(f.size/1024).toFixed(1)} KB)</span>
                     <span style="cursor: pointer;" onclick="removeFile(${i})">❌</span>
                 </div>
             `).join('');
@@ -276,22 +284,25 @@
             files.forEach(f => formData.append('files', f));
 
             try {
-                const res = await fetch('/api/upload', {
+                const res = await fetch('/api/bots', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                    }
                 });
                 const data = await res.json();
 
                 if (data.success) {
                     status.className = 'status success';
                     status.innerHTML = `
-                        ✅ <strong>Bot Deployed!</strong><br>
+                        ✅ <strong>Bot Deployed & Started!</strong><br>
                         Bot ID: ${data.botId}<br>
-                        <small>Webhook: ${data.webhookUrl}</small><br><br>
-                        <button onclick="startBot('${data.botId}')" style="width: auto; padding: 10px 20px;">
-                            ▶️ Start Bot
-                        </button>
+                        Status: ${data.status}<br><br>
+                        <a href="/dashboard.html" style="color: #000; font-weight: bold;">View Dashboard →</a>
                     `;
+                    files = [];
+                    updateFileList();
                 } else {
                     throw new Error(data.error);
                 }
@@ -303,16 +314,6 @@
             btn.disabled = false;
             btn.textContent = '🚀 Deploy Bot';
         });
-
-        async function startBot(botId) {
-            try {
-                const res = await fetch(`/api/bots/${botId}/start`, { method: 'POST' });
-                const data = await res.json();
-                alert(data.success ? '✅ Bot started!' : '❌ ' + data.error);
-            } catch (e) {
-                alert('Failed to start bot');
-            }
-        }
     </script>
 </body>
 </html>

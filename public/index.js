@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BotHost - Free Bot Hosting</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .subtitle {
+            opacity: 0.9;
+            font-size: 1.2rem;
+        }
+        .card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            font-size: 1rem;
+        }
+        .file-drop {
+            border: 3px dashed rgba(255,255,255,0.5);
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .file-drop:hover, .file-drop.dragover {
+            background: rgba(255,255,255,0.1);
+            border-color: white;
+        }
+        .file-list {
+            margin-top: 15px;
+        }
+        .file-item {
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        button {
+            background: #00d4aa;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+        }
+        .status.success { background: #00d4aa; display: block; }
+        .status.error { background: #ff4757; display: block; }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .feature {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .dashboard-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .dashboard-link a {
+            color: #00d4aa;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 BotHost</h1>
+            <p class="subtitle">Free Hosting for Telegram & WhatsApp Bots</p>
+        </header>
+
+        <div class="card">
+            <h2 style="margin-bottom: 20px;">Deploy Your Bot</h2>
+            
+            <form id="uploadForm">
+                <div class="form-group">
+                    <label>Bot Name</label>
+                    <input type="text" name="name" placeholder="My Awesome Bot" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Platform</label>
+                    <select name="platform" id="platform" required>
+                        <option value="telegram">Telegram</option>
+                        <option value="whatsapp">WhatsApp</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label id="tokenLabel">Bot Token (from @BotFather)</label>
+                    <input type="password" name="token" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Bot Files</label>
+                    <div class="file-drop" id="dropZone">
+                        <p>📁 Drag & drop your bot files here</p>
+                        <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 10px;">
+                            Accepts: .js, .json, .env, .py (Max 10MB)
+                        </p>
+                        <input type="file" id="fileInput" multiple style="display: none;" 
+                               accept=".js,.json,.env,.py">
+                    </div>
+                    <div class="file-list" id="fileList"></div>
+                </div>
+
+                <button type="submit" id="deployBtn">🚀 Deploy Bot</button>
+            </form>
+
+            <div id="status" class="status"></div>
+        </div>
+
+        <div class="dashboard-link">
+            <a href="/dashboard.html">📊 View Dashboard →</a>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">⚡</div>
+                <h3>Instant Deploy</h3>
+                <p>Your bot live in seconds</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🔄</div>
+                <h3>Auto Restart</h3>
+                <p>Crashes handled automatically</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📜</div>
+                <h3>Live Logs</h3>
+                <p>Real-time output streaming</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🆓</div>
+                <h3>Forever Free</h3>
+                <p>No credit card required</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const uploadForm = document.getElementById('uploadForm');
+        const platform = document.getElementById('platform');
+        const tokenLabel = document.getElementById('tokenLabel');
+        let files = [];
+
+        // Platform change handler
+        platform.addEventListener('change', () => {
+            if (platform.value === 'whatsapp') {
+                tokenLabel.textContent = 'Session ID (optional for QR scan)';
+            } else {
+                tokenLabel.textContent = 'Bot Token (from @BotFather)';
+            }
+        });
+
+        // Drag & drop
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        function handleFiles(fileList) {
+            files = [...files, ...Array.from(fileList)];
+            updateFileList();
+        }
+
+        function updateFileList() {
+            fileList.innerHTML = files.map((f, i) => `
+                <div class="file-item">
+                    <span>📄 ${f.name}</span>
+                    <span style="cursor: pointer;" onclick="removeFile(${i})">❌</span>
+                </div>
+            `).join('');
+        }
+
+        function removeFile(index) {
+            files.splice(index, 1);
+            updateFileList();
+        }
+
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('deployBtn');
+            const status = document.getElementById('status');
+            
+            btn.disabled = true;
+            btn.textContent = '⏳ Deploying...';
+            status.className = 'status';
+            status.style.display = 'none';
+
+            const formData = new FormData(uploadForm);
+            files.forEach(f => formData.append('files', f));
+
+            try {
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    status.className = 'status success';
+                    status.innerHTML = `
+                        ✅ <strong>Bot Deployed!</strong><br>
+                        Bot ID: ${data.botId}<br>
+                        <small>Webhook: ${data.webhookUrl}</small><br><br>
+                        <button onclick="startBot('${data.botId}')" style="width: auto; padding: 10px 20px;">
+                            ▶️ Start Bot
+                        </button>
+                    `;
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (err) {
+                status.className = 'status error';
+                status.textContent = '❌ Error: ' + err.message;
+            }
+
+            btn.disabled = false;
+            btn.textContent = '🚀 Deploy Bot';
+        });
+
+        async function startBot(botId) {
+            try {
+                const res = await fetch(`/api/bots/${botId}/start`, { method: 'POST' });
+                const data = await res.json();
+                alert(data.success ? '✅ Bot started!' : '❌ ' + data.error);
+            } catch (e) {
+                alert('Failed to start bot');
+            }
+        }
+    </script>
+</body>
+</html>
